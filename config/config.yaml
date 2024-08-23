@@ -1,0 +1,17 @@
+app:
+  name: "Auth service"
+
+network:
+  host: "0.0.0.0"
+  port: "8081"
+
+postgres:
+  user:
+  password:
+  host:
+  port:
+  database:
+
+tokens:
+  accessTTL: "10m"
+  refreshTTL: "43200m"
