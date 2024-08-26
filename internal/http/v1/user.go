@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ilovepitsa/jwt_tokens/internal/service"
 )
@@ -39,7 +40,8 @@ func (uh *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"err": "user id must be integer"}`, http.StatusBadRequest)
 		return
 	}
-	res, err := uh.userService.SignIn(uint32(user_id))
+	userip := strings.Split(r.RemoteAddr, ":")[0]
+	res, err := uh.userService.SignIn(uint32(user_id), userip)
 	if err != nil {
 		log.Println("cant sign-in ", err)
 		http.Error(w, `{"err": "cant sign-in"}`, http.StatusInternalServerError)
@@ -69,7 +71,9 @@ func (uh *UserHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refresh := r.URL.Query().Get("token")
-	res, err := uh.userService.Refresh(refresh)
+
+	userip := strings.Split(r.RemoteAddr, ":")[0]
+	res, err := uh.userService.Refresh(refresh, userip)
 	if err != nil {
 		log.Println("cant refresh ", err)
 		http.Error(w, `{"err": "cant refresh tokens"}`, http.StatusInternalServerError)

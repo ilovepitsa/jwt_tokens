@@ -17,9 +17,9 @@ var (
 
 type UserRepoInterface interface {
 	CreateUser(context.Context) (uint32, error)
-	GetByRefreshToken(context.Context, string) (uint32, error)
+	GetByRefreshToken(context.Context, string) (uint32, string, error)
 	CheckUserExist(context.Context, uint32) (bool, error)
-	CreateSession(ctx context.Context, userId uint32, refreshToken string) error
+	CreateSession(ctx context.Context, userId uint32, refreshToken string, userIp string) error
 }
 
 type userSql struct {
@@ -66,32 +66,33 @@ func (r *userRepo) CreateUser(ctx context.Context) (uint32, error) {
 	return id, nil
 }
 
-func (r *userRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (uint32, error) {
+func (r *userRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (uint32, string, error) {
 
 	trans, err := r.conn.Begin(ctx)
 	if err != nil {
 		trans.Rollback(ctx)
-		return 0, err
+		return 0, "", err
 	}
 	var user_id int
-	err = trans.QueryRow(ctx, "select user_id from sessions where refresh_token = $1 and expired_at > $2", refreshToken, time.Now()).Scan(&user_id)
+	var prev_ip string
+	err = trans.QueryRow(ctx, "select user_id, ip from sessions where refresh_token = $1 and expired_at > $2", refreshToken, time.Now()).Scan(&user_id, &prev_ip)
 	if err != nil {
 		trans.Rollback(ctx)
-		return 0, err
+		return 0, "", err
 	}
 	trans.Commit(ctx)
 	ans := uint32(user_id)
-	return ans, nil
+	return ans, prev_ip, nil
 }
 
-func (r *userRepo) CreateSession(ctx context.Context, userId uint32, refreshToken string) error {
+func (r *userRepo) CreateSession(ctx context.Context, userId uint32, refreshToken string, userIp string) error {
 	trans, err := r.conn.Begin(ctx)
 	if err != nil {
 		trans.Rollback(ctx)
 		return err
 	}
 	var success int
-	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, expired_at) values($1, $2, $3) on conflict (user_id) do update set refresh_token = $4, expired_at = $5 RETURNING 1;", userId, refreshToken, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
+	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, ip, expired_at) values($1, $2, $3,$4) on conflict (user_id) do update set refresh_token = $5, expired_at = $6 RETURNING 1;", userId, refreshToken, userIp, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
 	if err != nil {
 		trans.Rollback(ctx)
 		return err

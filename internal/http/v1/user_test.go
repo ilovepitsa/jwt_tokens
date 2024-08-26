@@ -16,7 +16,7 @@ type UserServiceMock struct {
 	manager tokens.TokenManager
 }
 
-func (s *UserServiceMock) SignIn(user_id uint32) (*entity.Tokens, error) {
+func (s *UserServiceMock) SignIn(user_id uint32, userIp string) (*entity.Tokens, error) {
 	if user_id == 1 {
 		return nil, fmt.Errorf("wrong id")
 	}
@@ -29,7 +29,7 @@ func (s *UserServiceMock) SignIn(user_id uint32) (*entity.Tokens, error) {
 		RefreshToken: refresh,
 	}, nil
 }
-func (s *UserServiceMock) Refresh(refresh_toker string) (*entity.Tokens, error) {
+func (s *UserServiceMock) Refresh(refresh_toker string, userIp string) (*entity.Tokens, error) {
 	if refresh_toker == "false" {
 		return nil, fmt.Errorf("some error")
 	}

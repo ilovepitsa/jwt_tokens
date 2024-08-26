@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"bytes"
+	b64 "encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 type RefreshGenerator func([]byte) []byte
 
 type TokenManager interface {
-	NewJWT(userId uint32, ttl time.Duration) (string, error)
+	NewJWT(userId uint32, user_ip string, ttl time.Duration) (string, error)
 	Parse(accessToken string) (string, error)
 	NewRefreshToken() (string, error)
 }
@@ -21,6 +22,11 @@ type TokenManager interface {
 type Manager struct {
 	secret    []byte
 	generator RefreshGenerator
+}
+
+type CustomerInfo struct {
+	*jwt.StandardClaims
+	Ip string
 }
 
 func NewManager(secretKey []byte, generator RefreshGenerator) (*Manager, error) {
@@ -34,12 +40,17 @@ func NewManager(secretKey []byte, generator RefreshGenerator) (*Manager, error) 
 	}, nil
 }
 
-func (m *Manager) NewJWT(userId uint32, ttl time.Duration) (string, error) {
+func (m *Manager) NewJWT(userId uint32, user_ip string, ttl time.Duration) (string, error) {
 	jwt.GetSigningMethod("")
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(ttl).Unix(),
-		Subject:   strconv.FormatUint(uint64(userId), 10),
-	})
+	token := jwt.New(jwt.SigningMethodHS512)
+	token.Claims = &CustomerInfo{
+		&jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(ttl).Unix(),
+			Subject:   strconv.FormatUint(uint64(userId), 10),
+		},
+		user_ip,
+	}
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS512, })
 
 	return token.SignedString(m.secret)
 }
@@ -69,6 +80,6 @@ func (m *Manager) NewRefreshToken() (string, error) {
 	b := make([]byte, 32)
 
 	b = m.generator(b)
-
-	return fmt.Sprintf("%x", b), nil
+	enc := b64.URLEncoding.EncodeToString(b)
+	return enc, nil
 }

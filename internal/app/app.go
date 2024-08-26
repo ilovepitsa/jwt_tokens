@@ -10,6 +10,7 @@ import (
 
 	"github.com/ilovepitsa/jwt_tokens/internal/config"
 	v1 "github.com/ilovepitsa/jwt_tokens/internal/http/v1"
+	"github.com/ilovepitsa/jwt_tokens/internal/notification"
 	"github.com/ilovepitsa/jwt_tokens/internal/repo"
 	"github.com/ilovepitsa/jwt_tokens/internal/service"
 	"github.com/ilovepitsa/jwt_tokens/pkg/tokens"
@@ -54,9 +55,10 @@ func Run(configPath string) error {
 	}
 
 	dep := service.Dependencies{
-		Cfg:          *cfg,
-		Repo:         repo,
-		TokenManager: manager,
+		Cfg:           *cfg,
+		Repo:          repo,
+		TokenManager:  manager,
+		EmailNotifier: notification.NewEmailNotificator(),
 	}
 
 	log.Println("Initialize services...")
