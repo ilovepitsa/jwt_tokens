@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -17,13 +16,13 @@ type UserServiceMock struct {
 	manager tokens.TokenManager
 }
 
-func (s *UserServiceMock) SignIn(r *http.Request) (*entity.Tokens, error) {
+func (s *UserServiceMock) SignIn(user_id uint32) (*entity.Tokens, error) {
 	return nil, nil
 }
-func (s *UserServiceMock) Refresh(r *http.Request) (*entity.Tokens, error) {
+func (s *UserServiceMock) Refresh(refresh_toker string) (*entity.Tokens, error) {
 	return nil, nil
 }
-func (s *UserServiceMock) CreateUser(r *http.Request) (*entity.User, error) {
+func (s *UserServiceMock) CreateUser() (*entity.User, error) {
 	return nil, nil
 }
 func TestUserHandler(t *testing.T) {
@@ -80,12 +79,12 @@ func TestUserHandler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			uh := v1.NewUserHandler(&tc.service)
-			request, _ := http.NewRequest(http.MethodPost, "/auth/sign-in", input)
+			request, _ := http.NewRequest(tc.method, "/auth/sign-in", tc.input)
 			responce := httptest.NewRecorder()
 			got := tc.test(uh, responce, request)
 
-			if !reflect.DeepEqual(tc.want, got) {
-				t.Fatal("want: ", tc.want, " got: ", got)
+			if strings.EqualFold(tc.want, got) {
+				t.Fatalf("want: %v  got: %v", tc.want, got)
 			}
 		})
 	}

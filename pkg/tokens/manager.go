@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -12,7 +13,7 @@ import (
 type RefreshGenerator func([]byte) []byte
 
 type TokenManager interface {
-	NewJWT(userId string, ttl time.Duration) (string, error)
+	NewJWT(userId uint32, ttl time.Duration) (string, error)
 	Parse(accessToken string) (string, error)
 	NewRefreshToken() (string, error)
 }
@@ -33,11 +34,11 @@ func NewManager(secretKey []byte, generator RefreshGenerator) (*Manager, error) 
 	}, nil
 }
 
-func (m *Manager) NewJWT(userId string, ttl time.Duration) (string, error) {
+func (m *Manager) NewJWT(userId uint32, ttl time.Duration) (string, error) {
 	jwt.GetSigningMethod("")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
 		ExpiresAt: time.Now().Add(ttl).Unix(),
-		Subject:   userId,
+		Subject:   strconv.FormatUint(uint64(userId), 10),
 	})
 
 	return token.SignedString(m.secret)

@@ -6,12 +6,13 @@ network:
   port: "8081"
 
 postgres:
-  user:
-  password:
-  host:
-  port:
-  database:
+  user: "auth_service"
+  password: "12345"
+  host: "db"
+  port: "5432"
+  database: "auth"
 
 tokens:
   accessTTL: "10m"
+  # refreshTTL: "30s"
   refreshTTL: "43200m"

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -23,11 +24,13 @@ var (
 
 func Run(configPath string) error {
 
+	log.Println("Reading config...")
 	cfg, err := config.NewConfig(configPath)
 	if err != nil {
 		return errors.Join(ErrReadConfig, err)
 	}
 
+	log.Println("Initialize token manager...")
 	manager, err := tokens.NewManager([]byte("must-be-secret-key"), func(b []byte) []byte {
 		s := rand.NewSource(time.Now().Unix())
 		r := rand.New(s)
@@ -43,19 +46,29 @@ func Run(configPath string) error {
 		return errors.Join(ErrInitTokenManager, err)
 	}
 
-	repo := repo.NewRepo(*cfg)
+	log.Println("Initialize repo...")
+	repo, err := repo.NewRepo(*cfg)
+	if err != nil {
+		log.Println("error connect db")
+		return err
+	}
 
 	dep := service.Dependencies{
+		Cfg:          *cfg,
 		Repo:         repo,
 		TokenManager: manager,
 	}
 
+	log.Println("Initialize services...")
 	serv := service.NewServices(dep)
 
 	handler := http.NewServeMux()
 
+	log.Println("Initialize router...")
 	v1.NewRouter(handler, *serv)
 
-	err = http.ListenAndServe(net.JoinHostPort(cfg.NetworkSettings.Host, cfg.NetworkSettings.Port), handler)
+	host := net.JoinHostPort(cfg.NetworkSettings.Host, cfg.NetworkSettings.Port)
+	log.Println("Starting server on ", host)
+	err = http.ListenAndServe(host, handler)
 	return err
 }
