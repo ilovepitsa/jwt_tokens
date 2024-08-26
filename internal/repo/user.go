@@ -10,6 +10,7 @@ import (
 
 	"github.com/ilovepitsa/jwt_tokens/internal/config"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -18,6 +19,7 @@ var (
 
 type UserRepoInterface interface {
 	CreateUser(context.Context) (uint32, error)
+	GetRefreshByInfo(ctx context.Context, user_id uint32) ([]byte, string, error)
 	GetByRefreshToken(context.Context, string) (uint32, string, error)
 	CheckUserExist(context.Context, uint32) (bool, error)
 	CreateSession(ctx context.Context, userId uint32, refreshToken string, userIp string) error
@@ -104,7 +106,13 @@ func (r *userRepo) CreateSession(ctx context.Context, userId uint32, refreshToke
 		return err
 	}
 	var success int
-	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, ip, expired_at) values($1, $2, $3,$4) on conflict (user_id) do update set refresh_token = $5, expired_at = $6 RETURNING 1;", userId, refreshToken, userIp, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
+	cryptRefresh, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcrypt.DefaultCost)
+	log.Println("refresh token raw: ", string(cryptRefresh))
+	if err != nil {
+		trans.Rollback(ctx)
+		return err
+	}
+	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, ip, expired_at) values($1, $2, $3,$4) on conflict (user_id) do update set refresh_token = $5, expired_at = $6 RETURNING 1;", userId, cryptRefresh, userIp, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
 	if err != nil {
 		trans.Rollback(ctx)
 		return err
@@ -131,4 +139,22 @@ func (r *userRepo) CheckUserExist(ctx context.Context, id uint32) (bool, error) 
 		return true, nil
 	}
 	return false, ErrUserNotExist
+}
+
+func (r *userRepo) GetRefreshByInfo(ctx context.Context, user_id uint32) ([]byte, string, error) {
+	trans, err := r.conn.Begin(ctx)
+	if err != nil {
+		trans.Rollback(ctx)
+		return nil, "", err
+	}
+
+	var refresh_token []byte
+	var prev_ip string
+	err = trans.QueryRow(ctx, "select refresh_token, ip from sessions where user_id = $1 and expired_at > $2", user_id, time.Now()).Scan(&refresh_token, &prev_ip)
+	if err != nil {
+		trans.Rollback(ctx)
+		return nil, "", err
+	}
+	trans.Commit(ctx)
+	return refresh_token, prev_ip, nil
 }

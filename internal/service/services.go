@@ -21,7 +21,7 @@ type Dependencies struct {
 func NewServices(dep Dependencies) *Services {
 	services := &Services{}
 
-	services.UserService = NewUserService(dep.Repo.UserRepo, dep.TokenManager, dep.EmailNotifier, dep.Cfg.TokensSettings.AccessTTL)
+	services.UserService = NewUserService(dep.Repo.UserRepo, dep.TokenManager, dep.EmailNotifier, dep.Cfg.TokensSettings.AccessTTL, dep.Cfg.TokensSettings.RefreshTTL)
 
 	return services
 }
