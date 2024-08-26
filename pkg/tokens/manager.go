@@ -2,7 +2,6 @@ package tokens
 
 import (
 	"bytes"
-	b64 "encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
@@ -15,8 +14,7 @@ type RefreshGenerator func([]byte) []byte
 
 type TokenManager interface {
 	NewJWT(userId uint32, user_ip string, ttl time.Duration) (string, error)
-	Parse(accessToken string) (string, error)
-	NewRefreshToken() (string, error)
+	Parse(inputToken string) (*CustomerInfo, error)
 }
 
 type Manager struct {
@@ -55,31 +53,25 @@ func (m *Manager) NewJWT(userId uint32, user_ip string, ttl time.Duration) (stri
 	return token.SignedString(m.secret)
 }
 
-func (m *Manager) Parse(accessToken string) (string, error) {
-	token, err := jwt.Parse(accessToken, func(t *jwt.Token) (interface{}, error) {
+func (m *Manager) Parse(inputToken string) (*CustomerInfo, error) {
+
+	token, err := jwt.ParseWithClaims(inputToken, &CustomerInfo{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 
 		return m.secret, nil
+
 	})
 
 	if err != nil {
-		return "", err
+		return &CustomerInfo{}, err
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*CustomerInfo)
 	if !ok {
-		return "", fmt.Errorf("error get user claims from token")
+		return &CustomerInfo{}, fmt.Errorf("error get user claims from token")
 	}
 
-	return claims["sub"].(string), nil
-}
-
-func (m *Manager) NewRefreshToken() (string, error) {
-	b := make([]byte, 32)
-
-	b = m.generator(b)
-	enc := b64.URLEncoding.EncodeToString(b)
-	return enc, nil
+	return claims, nil
 }

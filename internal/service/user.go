@@ -18,27 +18,27 @@ type UserServiceInterface interface {
 }
 
 type userService struct {
-	userRepo      repo.UserRepoInterface
-	tokenManager  tokens.TokenManager
-	tokenTTL      time.Duration
-	emailNotifier notification.Notifier
+	userRepo        repo.UserRepoInterface
+	tokenManager    tokens.TokenManager
+	refreshTokenTTL time.Duration
+	emailNotifier   notification.Notifier
 }
 
 func NewUserService(userRepo repo.UserRepoInterface, tokenManager tokens.TokenManager, emailNotifier notification.Notifier, tokenTTL time.Duration) *userService {
 	return &userService{
-		userRepo:      userRepo,
-		tokenManager:  tokenManager,
-		tokenTTL:      tokenTTL,
-		emailNotifier: emailNotifier,
+		userRepo:        userRepo,
+		tokenManager:    tokenManager,
+		refreshTokenTTL: tokenTTL,
+		emailNotifier:   emailNotifier,
 	}
 }
 
 func (us *userService) createSession(userId uint32, user_ip string) (*entity.Tokens, error) {
-	access, err := us.tokenManager.NewJWT(userId, user_ip, us.tokenTTL)
+	access, err := us.tokenManager.NewJWT(userId, user_ip, us.refreshTokenTTL)
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := us.tokenManager.NewRefreshToken()
+	refresh, err := us.tokenManager.NewJWT(userId, user_ip, us.refreshTokenTTL)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +65,7 @@ func (us *userService) SignIn(user_id uint32, user_ip string) (*entity.Tokens, e
 
 func (us *userService) Refresh(refresh_token string, user_ip string) (*entity.Tokens, error) {
 
+	us.tokenManager.Parse(refresh_token)
 	user, prev_ip, err := us.userRepo.GetByRefreshToken(context.TODO(), refresh_token)
 	if err != nil {
 		return nil, err
