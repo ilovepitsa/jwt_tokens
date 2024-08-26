@@ -41,7 +41,7 @@ func (uh *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := uh.userService.SignIn(uint32(user_id))
 	if err != nil {
-		log.Println("cant sign-in")
+		log.Println("cant sign-in ", err)
 		http.Error(w, `{"err": "cant sign-in"}`, http.StatusInternalServerError)
 		return
 	}
