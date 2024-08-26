@@ -18,11 +18,13 @@ type (
 	}
 
 	Postgres struct {
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		Host     string `yaml:"host"`
-		Port     string `yaml:"port"`
-		DB       string `yaml:"database"`
+		User               string        `yaml:"user"`
+		Password           string        `yaml:"password"`
+		Host               string        `yaml:"host"`
+		Port               string        `yaml:"port"`
+		DB                 string        `yaml:"database"`
+		ConnectionAttempts int           `yaml:"attempts"`
+		ConntectTimeout    time.Duration `yaml:"timeout"`
 	}
 
 	Tokens struct {
