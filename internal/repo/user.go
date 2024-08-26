@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ilovepitsa/jwt_tokens/internal/config"
@@ -34,8 +35,19 @@ type userRepo struct {
 func NewUserRepo(ctx context.Context, cfg config.Config) (*userRepo, error) {
 	url := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", cfg.PostgresSettings.User, cfg.PostgresSettings.Password,
 		cfg.PostgresSettings.Host, cfg.PostgresSettings.Port, cfg.PostgresSettings.DB)
+	var conn *pgx.Conn
+	var err error
 
-	conn, err := pgx.Connect(ctx, url)
+	for attemptsLeft := cfg.PostgresSettings.ConnectionAttempts; attemptsLeft > 0; attemptsLeft-- {
+		log.Println("Trying to connect to database...")
+		log.Println("Attempts left: ", attemptsLeft)
+		conn, err = pgx.Connect(ctx, url)
+		if err == nil {
+			break
+		}
+		time.Sleep(cfg.PostgresSettings.ConntectTimeout)
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,8 @@ postgres:
   host: "db"
   port: "5432"
   database: "auth"
+  attempts: 10
+  timeout: "1s"
 
 tokens:
   accessTTL: "10m"
