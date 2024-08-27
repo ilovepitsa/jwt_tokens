@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	configPath = flag.String("config", "./config/config.yaml", "path to config")
+	configPath = flag.String("c", "./config/config.yaml", "path to config")
 )
 
 func main() {
