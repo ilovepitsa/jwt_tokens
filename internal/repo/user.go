@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -87,7 +88,12 @@ func (r *userRepo) GetByRefreshToken(ctx context.Context, refreshToken string) (
 	}
 	var user_id int
 	var prev_ip string
-	err = trans.QueryRow(ctx, "select user_id, ip from sessions where refresh_token = $1 and expired_at > $2", refreshToken, time.Now()).Scan(&user_id, &prev_ip)
+
+	h := sha256.New()
+	h.Write([]byte(refreshToken))
+	hashed_token := h.Sum(nil)
+
+	err = trans.QueryRow(ctx, "select user_id, ip from sessions where refresh_token = $1 and expired_at > $2", hashed_token, time.Now()).Scan(&user_id, &prev_ip)
 	if err != nil {
 		trans.Rollback(ctx)
 		return 0, "", err
@@ -104,7 +110,10 @@ func (r *userRepo) CreateSession(ctx context.Context, userId uint32, refreshToke
 		return err
 	}
 	var success int
-	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, ip, expired_at) values($1, $2, $3,$4) on conflict (user_id) do update set refresh_token = $5, expired_at = $6 RETURNING 1;", userId, refreshToken, userIp, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
+	h := sha256.New()
+	h.Write([]byte(refreshToken))
+	hashed_token := h.Sum(nil)
+	err = trans.QueryRow(ctx, "insert into sessions (user_id, refresh_token, ip, expired_at) values($1, $2, $3,$4) on conflict (user_id) do update set refresh_token = $5, expired_at = $6 RETURNING 1;", userId, hashed_token, userIp, time.Now().Add(r.refreshTTL), refreshToken, time.Now().Add(r.refreshTTL)).Scan(&success)
 	if err != nil {
 		trans.Rollback(ctx)
 		return err

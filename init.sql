@@ -10,7 +10,7 @@ CREATE TABLE users (
 
 CREATE TABLE sessions (
     user_id int references users(id),
-    refresh_token varchar(64) not null,
+    refresh_token bytea not null,
     ip text not null,
     expired_at date not null
 );
